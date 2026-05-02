@@ -7,6 +7,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
   app.get(AvalonWsHub).attach(app.getHttpServer() as Server);
-  await app.listen(process.env.PORT ?? 3000);
+
+  const port = Number(process.env.PORT ?? 3000);
+  const host = process.env.HOST ?? '0.0.0.0';
+  await app.listen(port, host);
 }
 void bootstrap();
