@@ -13,8 +13,8 @@ Current storage is in memory. Rooms and games are lost when the process restarts
 ## Local Development
 
 ```bash
-pnpm install
-pnpm run start:dev
+npm install
+npm run start:dev
 ```
 
 Default local address:
@@ -27,10 +27,10 @@ ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}
 Useful checks:
 
 ```bash
-pnpm run build
-pnpm run lint
-pnpm run test
-pnpm run test:e2e
+npm run build
+npm run lint
+npm run test
+npm run test:e2e
 ```
 
 ## Environment Variables
@@ -160,6 +160,21 @@ pm2 restart avalon-api
 ```
 
 The PM2 config listens on `HOST=0.0.0.0` and `PORT=3000` by default. Change [ecosystem.config.cjs](ecosystem.config.cjs) before packaging if the server needs a different port.
+
+## Build Directly On A Small Server
+
+This is possible, but it is riskier on a 1GB RAM server. If you do it, limit Node memory and install with npm:
+
+```bash
+export NODE_OPTIONS="--max-old-space-size=384"
+npm ci --no-audit --no-fund
+npm run build
+npm prune --omit=dev
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
+If install or build is killed by the OS, use the local Docker packaging flow above instead.
 
 ## Nginx Reverse Proxy
 
