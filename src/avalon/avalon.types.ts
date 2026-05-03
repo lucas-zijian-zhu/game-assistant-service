@@ -73,6 +73,7 @@ export interface TeamVoteResult {
   approveCount: number;
   rejectCount: number;
   passed: boolean;
+  votes: Record<string, TeamVote>;
   forced?: boolean;
 }
 

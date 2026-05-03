@@ -354,6 +354,7 @@ export class AvalonService {
           approveCount: 0,
           rejectCount: 0,
           passed: true,
+          votes: {},
           forced: true,
         },
       });
@@ -537,7 +538,12 @@ export class AvalonService {
       status: passed ? 'mission_pending' : 'team_rejected',
       leaderPlayerId: state.game.leaderPlayerId ?? '',
       teamPlayerIds: state.game.teamPlayerIds,
-      teamVoteResult: { approveCount, rejectCount, passed },
+      teamVoteResult: {
+        approveCount,
+        rejectCount,
+        passed,
+        votes: Object.fromEntries(votes),
+      },
     };
 
     if (passed) {
@@ -577,7 +583,12 @@ export class AvalonService {
         status: 'mission_pending',
         leaderPlayerId: state.game.leaderPlayerId ?? '',
         teamPlayerIds: state.game.teamPlayerIds,
-        teamVoteResult: { approveCount: 0, rejectCount: 0, passed: true },
+        teamVoteResult: {
+          approveCount: 0,
+          rejectCount: 0,
+          passed: true,
+          votes: {},
+        },
       }),
       status: passed ? 'mission_succeeded' : 'mission_failed',
       missionResult: { successCount, failCount, passed },

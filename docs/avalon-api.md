@@ -153,6 +153,43 @@
 }
 ```
 
+### RoundResult
+
+`game.history` 和 `round.result` 使用该结构。队伍票会在结算后公开每个玩家的选择；任务票只公开统计，不公开个人明细。
+
+```json
+{
+  "round": 1,
+  "status": "team_rejected",
+  "leaderPlayerId": "p_001",
+  "teamPlayerIds": ["p_001", "p_003"],
+  "teamVoteResult": {
+    "approveCount": 2,
+    "rejectCount": 3,
+    "passed": false,
+    "votes": {
+      "p_001": "approve",
+      "p_002": "reject",
+      "p_003": "approve",
+      "p_004": "reject",
+      "p_005": "reject"
+    }
+  }
+}
+```
+
+任务结算后的记录会额外包含：
+
+```json
+{
+  "missionResult": {
+    "successCount": 1,
+    "failCount": 1,
+    "passed": false
+  }
+}
+```
+
 ### VisibleRoleInfo
 
 ```json
@@ -611,8 +648,9 @@ X-Player-Id: p_002
 - 同意票数大于反对票数时，进入 `mission_vote`。
 - 否则进入 `team_building`，队长轮换到下一位，`teamVoteAttempt` 加 1。
 - 队伍投票被否决不算任务失败，但会写入 `game.history`，该条记录 `status` 为 `team_rejected`，且没有 `missionResult`。
+- 队伍投票结算后会公开每个玩家的 `approve` / `reject`，字段为 `teamVoteResult.votes`。
 - 同一任务轮第 5 次组队时，队长提交队伍后直接进入 `mission_vote`，不再进行队伍投票；该条记录的 `teamVoteResult.forced` 为 `true`。
-- 只公开进度和统计，不公开每个玩家的具体选择。
+- 投票未全部提交前只公开进度，不公开每个玩家的具体选择。
 
 ### 任务投票
 
@@ -879,7 +917,7 @@ X-Player-Id: {playerId}
 
 #### round.result
 
-队伍投票或任务投票完成并结算后广播。注意：被否决的队伍投票会写入 `game.history`，但 `status` 是 `team_rejected` 且没有 `missionResult`，不计为任务失败。
+队伍投票或任务投票完成并结算后广播。注意：被否决的队伍投票会写入 `game.history`，但 `status` 是 `team_rejected` 且没有 `missionResult`，不计为任务失败。队伍投票结算后的 `roundResult.teamVoteResult.votes` 会公开每个玩家的 `approve` / `reject`；任务票个人明细不会公开。
 
 ```json
 {

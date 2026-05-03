@@ -25,6 +25,7 @@ interface GameResponseBody {
         passed: boolean;
       };
       teamVoteResult: {
+        votes: Record<string, 'approve' | 'reject'>;
         forced?: boolean;
       };
     }>;
@@ -196,6 +197,9 @@ describe('AppController (e2e)', () => {
       expect(game.history).toHaveLength(attempt);
       expect(game.history[attempt - 1].status).toBe('team_rejected');
       expect(game.history[attempt - 1].missionResult).toBeUndefined();
+      expect(game.history[attempt - 1].teamVoteResult.votes).toEqual(
+        Object.fromEntries(playerIds.map((playerId) => [playerId, 'reject'])),
+      );
     }
 
     const leaderPlayerId = game.leaderPlayerId;
@@ -213,6 +217,7 @@ describe('AppController (e2e)', () => {
     expect(game.teamVoteAttempt).toBe(5);
     expect(game.history).toHaveLength(5);
     expect(game.history[4].status).toBe('mission_pending');
+    expect(game.history[4].teamVoteResult.votes).toEqual({});
     expect(game.history[4].teamVoteResult.forced).toBe(true);
   });
 
