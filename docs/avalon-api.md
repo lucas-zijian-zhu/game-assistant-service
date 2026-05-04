@@ -6,6 +6,7 @@
 
 - 本地服务地址：`http://localhost:3000`
 - Base URL：`/api`
+- Swagger UI：`/api-docs`
 - WebSocket：`ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}`
 - 请求格式：`Content-Type: application/json`
 - 当前玩家标识：部分查询接口通过请求头 `X-Player-Id` 返回当前玩家可见身份信息。

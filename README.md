@@ -6,6 +6,7 @@ NestJS backend for the Avalon assistant MVP.
 
 - HTTP API: `/api`
 - Room WebSocket: `/ws/rooms/{roomCode}?playerId={playerId}`
+- Swagger UI: `/api-docs`
 - API document: [docs/avalon-api.md](docs/avalon-api.md)
 
 Current storage is in memory. Rooms and games are lost when the process restarts.
@@ -21,6 +22,7 @@ Default local address:
 
 ```text
 http://localhost:3000
+http://localhost:3000/api-docs
 ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}
 ```
 

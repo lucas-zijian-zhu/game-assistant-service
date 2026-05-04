@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { AvalonException } from './avalon.errors';
 import { getRole, ROLES } from './avalon.roles';
 import {
@@ -791,7 +791,7 @@ export class AvalonService {
   }
 
   private randomPlayerId(players: Player[]) {
-    return players[Math.floor(Math.random() * players.length)].id;
+    return players[randomInt(players.length)].id;
   }
 
   private currentTeamSize(state: InternalRoomState) {
@@ -928,7 +928,7 @@ export class AvalonService {
   private shuffle<T>(items: T[]) {
     const shuffled = [...items];
     for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1));
+      const randomIndex = randomInt(index + 1);
       [shuffled[index], shuffled[randomIndex]] = [
         shuffled[randomIndex],
         shuffled[index],
