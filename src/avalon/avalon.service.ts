@@ -72,6 +72,7 @@ export class AvalonService {
       missionVotesByRound: new Map(),
     };
     this.roomsByCode.set(roomCode, state);
+    this.broadcastLobbyRoomsChanged('room_created', roomCode);
 
     return { room: state.room, currentPlayerId: host.id };
   }
@@ -198,6 +199,7 @@ export class AvalonService {
 
   private closeRoomState(state: InternalRoomState, reason: string) {
     this.clearEmptyRoomCloseTimer(state.room.code);
+    const roomCode = state.room.code;
     state.room.status = 'closed';
     state.room.players = [];
     state.game.phase = 'finished';
@@ -208,6 +210,7 @@ export class AvalonService {
       reason,
     });
     this.broadcast(state, 'room.updated', { room: state.room });
+    this.broadcastLobbyRoomsChanged(reason, roomCode);
   }
 
   startGame(roomCode: string, hostPlayerId: string) {
@@ -245,6 +248,7 @@ export class AvalonService {
     this.bump(state);
     this.broadcast(state, 'room.updated', { room: state.room });
     this.broadcast(state, 'game.updated', { game: state.game });
+    this.broadcastLobbyRoomsChanged('room_updated', state.room.code);
     for (const player of state.room.players) {
       this.wsHub.sendToPlayer(
         state.room.code,
@@ -503,6 +507,7 @@ export class AvalonService {
     this.bump(state);
     this.broadcast(state, 'game.updated', { game: state.game });
     this.broadcast(state, 'room.updated', { room: state.room });
+    this.broadcastLobbyRoomsChanged('room_updated', state.room.code);
     return { game: state.game };
   }
 
@@ -521,6 +526,7 @@ export class AvalonService {
     this.bump(state);
     this.broadcast(state, 'room.updated', { room: state.room });
     this.broadcast(state, 'game.updated', { game: state.game });
+    this.broadcastLobbyRoomsChanged('room_updated', state.room.code);
     return { room: state.room };
   }
 
@@ -621,6 +627,7 @@ export class AvalonService {
     this.broadcast(state, 'game.updated', { game: state.game });
     if (state.room.status === 'finished') {
       this.broadcast(state, 'room.updated', { room: state.room });
+      this.broadcastLobbyRoomsChanged('room_updated', state.room.code);
     }
   }
 
@@ -853,6 +860,7 @@ export class AvalonService {
   private bumpAndBroadcastRoom(state: InternalRoomState) {
     this.bump(state);
     this.broadcast(state, 'room.updated', { room: state.room });
+    this.broadcastLobbyRoomsChanged('room_updated', state.room.code);
   }
 
   private bumpAndBroadcastGame(state: InternalRoomState) {
@@ -867,6 +875,14 @@ export class AvalonService {
 
   private broadcast(state: InternalRoomState, type: string, payload: unknown) {
     this.wsHub.broadcast(state.room.code, this.event(state, type, payload));
+  }
+
+  private broadcastLobbyRoomsChanged(reason: string, roomCode: string) {
+    this.wsHub.broadcastLobby({
+      type: 'lobby.rooms.changed',
+      payload: { reason, roomCode },
+      createdAt: new Date().toISOString(),
+    });
   }
 
   private event(

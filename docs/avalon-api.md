@@ -7,7 +7,8 @@
 - 本地服务地址：`http://localhost:3000`
 - Base URL：`/api`
 - Swagger UI：`/api-docs`
-- WebSocket：`ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}`
+- 大厅 WebSocket：`ws://localhost:3000/ws/lobby?playerId={playerId}`
+- 房间 WebSocket：`ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}`
 - 请求格式：`Content-Type: application/json`
 - 当前玩家标识：部分查询接口通过请求头 `X-Player-Id` 返回当前玩家可见身份信息。
 - 当前存储：内存存储，服务重启后房间和对局数据会丢失。
@@ -791,6 +792,14 @@ X-Player-Id: p_002
 
 ### 建立连接
 
+大厅连接：
+
+```text
+ws://localhost:3000/ws/lobby?playerId={playerId}
+```
+
+房间连接：
+
 ```text
 ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}
 ```
@@ -808,6 +817,8 @@ ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}
   "createdAt": "2026-04-29T22:00:00.000Z"
 }
 ```
+
+大厅连接成功时 `payload.scope` 为 `lobby`，不包含 `roomCode`。
 
 建议客户端收到后调用：
 
@@ -844,6 +855,21 @@ X-Player-Id: {playerId}
 }
 ```
 
+#### lobby.rooms.changed
+
+房间创建、加入、离开、准备、角色配置、开始、结束、重置或关闭时，推送给所有大厅连接。前端收到后应调用 `GET /api/rooms` 刷新大厅列表。
+
+```json
+{
+  "type": "lobby.rooms.changed",
+  "payload": {
+    "reason": "room_created",
+    "roomCode": "A1B2C3"
+  },
+  "createdAt": "2026-04-29T22:01:00.000Z"
+}
+```
+
 #### room.closed
 
 房主解散房间时推送给该房间所有连接。前端收到后应认为当前玩家已经不在房间内。
@@ -863,7 +889,7 @@ X-Player-Id: {playerId}
 说明：
 
 - `reason: "host_closed"` 表示房主主动解散。
-- `reason: "empty_timeout"` 表示所有 WebSocket 连接断开后超过保留时间，服务端自动关闭房间。该场景通常没有在线连接可收到推送；大厅通过 `GET /api/rooms` 刷新后会看不到该房间。
+- `reason: "empty_timeout"` 表示所有 WebSocket 连接断开后超过保留时间，服务端自动关闭房间。该场景通常没有房间内连接可收到 `room.closed`；大厅连接会收到 `lobby.rooms.changed`，前端应通过 `GET /api/rooms` 刷新。
 
 #### game.updated
 

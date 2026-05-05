@@ -10,6 +10,11 @@ interface ClientConnection {
   socket: WebSocket;
 }
 
+interface LobbyConnection {
+  playerId: string;
+  socket: WebSocket;
+}
+
 type RoomConnectionCountListener = (
   roomCode: string,
   connectionCount: number,
@@ -19,6 +24,7 @@ type RoomConnectionCountListener = (
 export class AvalonWsHub implements OnModuleDestroy {
   private server: WebSocketServer | null = null;
   private readonly clientsByRoom = new Map<string, Set<ClientConnection>>();
+  private readonly lobbyClients = new Set<LobbyConnection>();
   private roomConnectionCountListener: RoomConnectionCountListener | null =
     null;
 
@@ -34,13 +40,17 @@ export class AvalonWsHub implements OnModuleDestroy {
       const match = url.pathname.match(/^\/ws\/rooms\/([^/]+)$/);
       const playerId = url.searchParams.get('playerId');
 
-      if (!match || !playerId) {
+      if (!playerId || (!match && url.pathname !== '/ws/lobby')) {
         socket.destroy();
         return;
       }
 
       this.server?.handleUpgrade(request, socket, head, (ws) => {
-        this.register(ws, match[1].toUpperCase(), playerId);
+        if (match) {
+          this.registerRoom(ws, match[1].toUpperCase(), playerId);
+          return;
+        }
+        this.registerLobby(ws, playerId);
       });
     });
   }
@@ -67,13 +77,20 @@ export class AvalonWsHub implements OnModuleDestroy {
     }
   }
 
+  broadcastLobby(event: WsEvent) {
+    for (const client of this.lobbyClients) {
+      this.send(client.socket, event);
+    }
+  }
+
   onModuleDestroy() {
     this.server?.close();
     this.server = null;
     this.clientsByRoom.clear();
+    this.lobbyClients.clear();
   }
 
-  private register(socket: WebSocket, roomCode: string, playerId: string) {
+  private registerRoom(socket: WebSocket, roomCode: string, playerId: string) {
     const client: ClientConnection = { roomCode, playerId, socket };
     const clients = this.clientsByRoom.get(roomCode) ?? new Set();
     clients.add(client);
@@ -99,6 +116,28 @@ export class AvalonWsHub implements OnModuleDestroy {
         this.clientsByRoom.delete(roomCode);
       }
       this.notifyRoomConnectionCountChanged(roomCode, clients.size);
+    });
+  }
+
+  private registerLobby(socket: WebSocket, playerId: string) {
+    const client: LobbyConnection = { playerId, socket };
+    this.lobbyClients.add(client);
+
+    this.send(socket, {
+      type: 'connection.ready',
+      payload: {
+        scope: 'lobby',
+        playerId,
+        serverTime: new Date().toISOString(),
+      },
+      createdAt: new Date().toISOString(),
+    });
+
+    socket.on('message', (raw) => {
+      this.handleClientMessage(socket, this.rawDataToString(raw));
+    });
+    socket.on('close', () => {
+      this.lobbyClients.delete(client);
     });
   }
 

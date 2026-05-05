@@ -5,6 +5,7 @@ NestJS backend for the Avalon assistant MVP.
 ## Runtime
 
 - HTTP API: `/api`
+- Lobby WebSocket: `/ws/lobby?playerId={playerId}`
 - Room WebSocket: `/ws/rooms/{roomCode}?playerId={playerId}`
 - Swagger UI: `/api-docs`
 - API document: [docs/avalon-api.md](docs/avalon-api.md)
@@ -23,6 +24,7 @@ Default local address:
 ```text
 http://localhost:3000
 http://localhost:3000/api-docs
+ws://localhost:3000/ws/lobby?playerId={playerId}
 ws://localhost:3000/ws/rooms/{roomCode}?playerId={playerId}
 ```
 
@@ -206,6 +208,7 @@ Frontend configuration after HTTPS is enabled:
 
 ```text
 API_BASE_URL=https://api.example.com/api
+LOBBY_WS_URL=wss://api.example.com/ws/lobby?playerId={playerId}
 WS_URL=wss://api.example.com/ws/rooms/{roomCode}?playerId={playerId}
 ```
 
