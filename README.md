@@ -41,7 +41,7 @@ npm run test:e2e
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP and WebSocket listen port |
 | `HOST` | `0.0.0.0` | Listen host. Keep `0.0.0.0` for Docker and cloud deployment |
-| `AVALON_EMPTY_ROOM_CLOSE_DELAY_MS` | `60000` | Auto-close delay after all room WebSocket connections disconnect |
+| `AVALON_EMPTY_ROOM_CLOSE_DELAY_MS` | `1800000` | Auto-close delay after all room WebSocket connections disconnect |
 
 ## Docker Deployment
 
@@ -59,7 +59,7 @@ docker run -d \
   -p 3000:3000 \
   -e PORT=3000 \
   -e HOST=0.0.0.0 \
-  -e AVALON_EMPTY_ROOM_CLOSE_DELAY_MS=60000 \
+  -e AVALON_EMPTY_ROOM_CLOSE_DELAY_MS=1800000 \
   avalon-api
 ```
 
@@ -97,7 +97,7 @@ services:
     environment:
       PORT: "3000"
       HOST: "0.0.0.0"
-      AVALON_EMPTY_ROOM_CLOSE_DELAY_MS: "60000"
+      AVALON_EMPTY_ROOM_CLOSE_DELAY_MS: "1800000"
 ```
 
 Then run:

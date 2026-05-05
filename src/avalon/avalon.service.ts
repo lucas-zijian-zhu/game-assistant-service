@@ -28,7 +28,7 @@ const TEAM_SIZES: Record<number, number[]> = {
   10: [3, 4, 4, 5, 5],
 };
 
-const DEFAULT_EMPTY_ROOM_CLOSE_DELAY_MS = 60_000;
+const DEFAULT_EMPTY_ROOM_CLOSE_DELAY_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class AvalonService {

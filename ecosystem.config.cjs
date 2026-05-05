@@ -9,7 +9,7 @@ module.exports = {
         NODE_ENV: 'production',
         HOST: '0.0.0.0',
         PORT: '3000',
-        AVALON_EMPTY_ROOM_CLOSE_DELAY_MS: '60000',
+        AVALON_EMPTY_ROOM_CLOSE_DELAY_MS: '1800000',
       },
     },
   ],
