@@ -257,6 +257,10 @@ describe('AppController (e2e)', () => {
         expect.objectContaining({ code: createBody.room.code }),
       ]),
     );
+
+    await request(app.getHttpServer())
+      .get(`/api/rooms/${createBody.room.code}`)
+      .expect(404);
   });
 
   it('removes an inactive closed room from the lobby list', async () => {
@@ -289,6 +293,10 @@ describe('AppController (e2e)', () => {
         expect.objectContaining({ code: createBody.room.code }),
       ]),
     );
+
+    await request(app.getHttpServer())
+      .get(`/api/rooms/${createBody.room.code}`)
+      .expect(404);
   });
 
   afterEach(async () => {

@@ -5,9 +5,16 @@ import { AvalonWsHub } from './avalon.ws-hub';
 class FakeSocket extends EventEmitter {
   readyState = WebSocket.OPEN;
   sent: string[] = [];
+  closeCalls: Array<{ code?: number; reason?: string }> = [];
 
   send(message: string) {
     this.sent.push(message);
+  }
+
+  close(code?: number, reason?: string) {
+    this.closeCalls.push({ code, reason });
+    this.readyState = WebSocket.CLOSED;
+    this.emit('close');
   }
 }
 
@@ -56,5 +63,40 @@ describe('AvalonWsHub', () => {
     });
 
     expect(socket.sent).toHaveLength(2);
+  });
+
+  it('closes all active connections for a room', () => {
+    const hub = new AvalonWsHub();
+    const firstSocket = new FakeSocket();
+    const secondSocket = new FakeSocket();
+
+    (
+      hub as unknown as {
+        registerRoom(
+          socket: WebSocket,
+          roomCode: string,
+          playerId: string,
+        ): void;
+      }
+    ).registerRoom(firstSocket as unknown as WebSocket, 'A1B2C3', 'p_001');
+    (
+      hub as unknown as {
+        registerRoom(
+          socket: WebSocket,
+          roomCode: string,
+          playerId: string,
+        ): void;
+      }
+    ).registerRoom(secondSocket as unknown as WebSocket, 'A1B2C3', 'p_002');
+
+    hub.closeRoomConnections('a1b2c3');
+
+    expect(firstSocket.closeCalls).toEqual([
+      { code: 1000, reason: 'room_closed' },
+    ]);
+    expect(secondSocket.closeCalls).toEqual([
+      { code: 1000, reason: 'room_closed' },
+    ]);
+    expect(hub.getRoomConnectionCount('A1B2C3')).toBe(0);
   });
 });

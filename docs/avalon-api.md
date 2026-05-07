@@ -12,7 +12,9 @@
 - 请求格式：`Content-Type: application/json`
 - 当前玩家标识：部分查询接口通过请求头 `X-Player-Id` 返回当前玩家可见身份信息。
 - 当前存储：内存存储，服务重启后房间和对局数据会丢失。
-- 空房间自动关闭：房间内所有 WebSocket 连接断开后，默认 30 分钟内无人重连则自动关闭。可通过环境变量 `AVALON_EMPTY_ROOM_CLOSE_DELAY_MS` 配置毫秒数。
+- 空房间自动关闭：房间内所有 WebSocket 连接断开后，默认 30 分钟内无人重连则自动关闭并从内存删除。可通过环境变量 `AVALON_EMPTY_ROOM_CLOSE_DELAY_MS` 配置毫秒数。
+- 已结束房间回收：对局结束后，房间内所有 WebSocket 连接断开并等待默认 2 小时后会从内存删除。可通过环境变量 `AVALON_FINISHED_ROOM_RETENTION_MS` 配置毫秒数。
+- 连接保护：房间 WebSocket 只允许已在房间内的玩家连接；服务端会定期 heartbeat 清理无响应连接，并对 HTTP 请求和 WebSocket upgrade 做按 IP 的简单限流。
 
 ## 通用错误格式
 

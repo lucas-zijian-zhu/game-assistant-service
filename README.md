@@ -44,6 +44,12 @@ npm run test:e2e
 | `PORT` | `3000` | HTTP and WebSocket listen port |
 | `HOST` | `0.0.0.0` | Listen host. Keep `0.0.0.0` for Docker and cloud deployment |
 | `AVALON_EMPTY_ROOM_CLOSE_DELAY_MS` | `1800000` | Auto-close delay after all room WebSocket connections disconnect |
+| `AVALON_FINISHED_ROOM_RETENTION_MS` | `7200000` | Retention delay before deleting a finished room after all room WebSocket connections disconnect |
+| `AVALON_HTTP_RATE_LIMIT_WINDOW_MS` | `60000` | HTTP rate limit window |
+| `AVALON_HTTP_RATE_LIMIT_MAX` | `240` | Max HTTP requests per client IP per window. Set `0` to disable HTTP rate limiting |
+| `AVALON_WS_HEARTBEAT_INTERVAL_MS` | `30000` | WebSocket heartbeat interval. Set `0` to disable server heartbeat |
+| `AVALON_WS_UPGRADE_RATE_LIMIT_WINDOW_MS` | `60000` | WebSocket upgrade rate limit window |
+| `AVALON_WS_UPGRADE_RATE_LIMIT_MAX` | `120` | Max WebSocket upgrade attempts per client IP per window. Set `0` to disable |
 
 ## Docker Deployment
 
@@ -62,6 +68,9 @@ docker run -d \
   -e PORT=3000 \
   -e HOST=0.0.0.0 \
   -e AVALON_EMPTY_ROOM_CLOSE_DELAY_MS=1800000 \
+  -e AVALON_FINISHED_ROOM_RETENTION_MS=7200000 \
+  -e AVALON_HTTP_RATE_LIMIT_MAX=240 \
+  -e AVALON_WS_UPGRADE_RATE_LIMIT_MAX=120 \
   avalon-api
 ```
 
@@ -100,6 +109,9 @@ services:
       PORT: "3000"
       HOST: "0.0.0.0"
       AVALON_EMPTY_ROOM_CLOSE_DELAY_MS: "1800000"
+      AVALON_FINISHED_ROOM_RETENTION_MS: "7200000"
+      AVALON_HTTP_RATE_LIMIT_MAX: "240"
+      AVALON_WS_UPGRADE_RATE_LIMIT_MAX: "120"
 ```
 
 Then run:

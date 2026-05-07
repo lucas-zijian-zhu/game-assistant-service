@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { randomBytes, randomInt } from 'node:crypto';
 import { AvalonException } from './avalon.errors';
 import { getRole, ROLES } from './avalon.roles';
@@ -29,12 +29,19 @@ const TEAM_SIZES: Record<number, number[]> = {
 };
 
 const DEFAULT_EMPTY_ROOM_CLOSE_DELAY_MS = 30 * 60 * 1000;
+const DEFAULT_FINISHED_ROOM_RETENTION_MS = 2 * 60 * 60 * 1000;
 
 @Injectable()
-export class AvalonService {
+export class AvalonService implements OnModuleDestroy {
   private readonly roomsByCode = new Map<string, InternalRoomState>();
   private readonly emptyRoomCloseTimers = new Map<string, NodeJS.Timeout>();
+  private readonly finishedRoomDeletionTimers = new Map<
+    string,
+    NodeJS.Timeout
+  >();
   private readonly emptyRoomCloseDelayMs = this.getEmptyRoomCloseDelayMs();
+  private readonly finishedRoomRetentionMs =
+    this.getFinishedRoomRetentionMs();
   private roomSequence = 1;
   private playerSequence = 1;
 
@@ -42,6 +49,20 @@ export class AvalonService {
     this.wsHub.onRoomConnectionCountChanged((roomCode, connectionCount) => {
       this.handleRoomConnectionCountChanged(roomCode, connectionCount);
     });
+    this.wsHub.onRoomConnectionRequested((roomCode, playerId) =>
+      this.canConnectToRoom(roomCode, playerId),
+    );
+  }
+
+  onModuleDestroy() {
+    for (const timer of this.emptyRoomCloseTimers.values()) {
+      clearTimeout(timer);
+    }
+    for (const timer of this.finishedRoomDeletionTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.emptyRoomCloseTimers.clear();
+    this.finishedRoomDeletionTimers.clear();
   }
 
   createRoom(input: {
@@ -211,6 +232,8 @@ export class AvalonService {
     });
     this.broadcast(state, 'room.updated', { room: state.room });
     this.broadcastLobbyRoomsChanged(reason, roomCode);
+    this.wsHub.closeRoomConnections(roomCode);
+    this.deleteRoomState(roomCode);
   }
 
   startGame(roomCode: string, hostPlayerId: string) {
@@ -508,12 +531,14 @@ export class AvalonService {
     this.broadcast(state, 'game.updated', { game: state.game });
     this.broadcast(state, 'room.updated', { room: state.room });
     this.broadcastLobbyRoomsChanged('room_updated', state.room.code);
+    this.scheduleFinishedRoomDeletionIfEmpty(state.room.code);
     return { game: state.game };
   }
 
   resetGame(roomCode: string, hostPlayerId: string) {
     const state = this.getInternal(roomCode);
     this.assertHost(state, hostPlayerId);
+    this.clearFinishedRoomDeletionTimer(state.room.code);
     state.room.status = 'lobby';
     state.room.players = state.room.players.map((player) => ({
       ...player,
@@ -628,6 +653,7 @@ export class AvalonService {
     if (state.room.status === 'finished') {
       this.broadcast(state, 'room.updated', { room: state.room });
       this.broadcastLobbyRoomsChanged('room_updated', state.room.code);
+      this.scheduleFinishedRoomDeletionIfEmpty(state.room.code);
     }
   }
 
@@ -724,6 +750,15 @@ export class AvalonService {
       throw new AvalonException('ROOM_NOT_FOUND', '房间不存在。');
     }
     return state;
+  }
+
+  private canConnectToRoom(roomCode: string, playerId: string) {
+    const state = this.roomsByCode.get(roomCode.toUpperCase());
+    return (
+      !!state &&
+      state.room.status !== 'closed' &&
+      state.room.players.some((player) => player.id === playerId)
+    );
   }
 
   private getPlayer(state: InternalRoomState, playerId: string) {
@@ -905,11 +940,16 @@ export class AvalonService {
     const normalizedRoomCode = roomCode.toUpperCase();
     if (connectionCount > 0) {
       this.clearEmptyRoomCloseTimer(normalizedRoomCode);
+      this.clearFinishedRoomDeletionTimer(normalizedRoomCode);
       return;
     }
 
     const state = this.roomsByCode.get(normalizedRoomCode);
     if (!state || state.room.status === 'closed') {
+      return;
+    }
+    if (state.room.status === 'finished') {
+      this.scheduleFinishedRoomDeletion(normalizedRoomCode);
       return;
     }
 
@@ -922,6 +962,38 @@ export class AvalonService {
     this.emptyRoomCloseTimers.set(normalizedRoomCode, timer);
   }
 
+  private scheduleFinishedRoomDeletionIfEmpty(roomCode: string) {
+    const normalizedRoomCode = roomCode.toUpperCase();
+    if (this.wsHub.getRoomConnectionCount(normalizedRoomCode) === 0) {
+      this.scheduleFinishedRoomDeletion(normalizedRoomCode);
+    }
+  }
+
+  private scheduleFinishedRoomDeletion(roomCode: string) {
+    const normalizedRoomCode = roomCode.toUpperCase();
+    const state = this.roomsByCode.get(normalizedRoomCode);
+    if (!state || state.room.status !== 'finished') {
+      return;
+    }
+
+    this.clearFinishedRoomDeletionTimer(normalizedRoomCode);
+    if (this.finishedRoomRetentionMs === 0) {
+      this.deleteRoomState(normalizedRoomCode);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const latestState = this.roomsByCode.get(normalizedRoomCode);
+      if (
+        latestState?.room.status === 'finished' &&
+        this.wsHub.getRoomConnectionCount(normalizedRoomCode) === 0
+      ) {
+        this.deleteRoomState(normalizedRoomCode);
+      }
+    }, this.finishedRoomRetentionMs);
+    this.finishedRoomDeletionTimers.set(normalizedRoomCode, timer);
+  }
+
   private clearEmptyRoomCloseTimer(roomCode: string) {
     const normalizedRoomCode = roomCode.toUpperCase();
     const timer = this.emptyRoomCloseTimers.get(normalizedRoomCode);
@@ -929,6 +1001,22 @@ export class AvalonService {
       clearTimeout(timer);
       this.emptyRoomCloseTimers.delete(normalizedRoomCode);
     }
+  }
+
+  private clearFinishedRoomDeletionTimer(roomCode: string) {
+    const normalizedRoomCode = roomCode.toUpperCase();
+    const timer = this.finishedRoomDeletionTimers.get(normalizedRoomCode);
+    if (timer) {
+      clearTimeout(timer);
+      this.finishedRoomDeletionTimers.delete(normalizedRoomCode);
+    }
+  }
+
+  private deleteRoomState(roomCode: string) {
+    const normalizedRoomCode = roomCode.toUpperCase();
+    this.clearEmptyRoomCloseTimer(normalizedRoomCode);
+    this.clearFinishedRoomDeletionTimer(normalizedRoomCode);
+    this.roomsByCode.delete(normalizedRoomCode);
   }
 
   private getEmptyRoomCloseDelayMs() {
@@ -939,6 +1027,16 @@ export class AvalonService {
       return configuredDelay;
     }
     return DEFAULT_EMPTY_ROOM_CLOSE_DELAY_MS;
+  }
+
+  private getFinishedRoomRetentionMs() {
+    const configuredDelay = Number(
+      process.env.AVALON_FINISHED_ROOM_RETENTION_MS,
+    );
+    if (Number.isFinite(configuredDelay) && configuredDelay >= 0) {
+      return configuredDelay;
+    }
+    return DEFAULT_FINISHED_ROOM_RETENTION_MS;
   }
 
   private shuffle<T>(items: T[]) {
